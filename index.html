@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You Lead Elite Group — Tech Empowerment</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--bg:#F7F6F3;--white:#FFFFFF;--ink:#1A1A1A;--muted:#6B6B6B;--border:#E2E0DA;--accent-light:#F0EFE9;--green:#2D6A4F;--green-light:#D8F3DC;--red:#C0392B;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--radius:12px;--radius-sm:8px;}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+.site-header{background:var(--white);border-bottom:1px solid var(--border);padding:1rem;position:sticky;top:0;z-index:100;}
+.header-inner{max-width:600px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:.75rem;}
+.site-name{font-size:13px;font-weight:700;color:var(--ink);line-height:1.3;}
+.site-name span{display:block;font-weight:400;font-size:11px;color:var(--muted);}
+.header-badge{font-family:var(--mono);font-size:10px;background:var(--accent-light);color:var(--ink);padding:4px 10px;border-radius:20px;border:1px solid var(--border);white-space:nowrap;flex-shrink:0;}
+.main{max-width:600px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.screen{display:none;}.screen.active{display:block;}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;}
+.card-title{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:.35rem;letter-spacing:-.02em;}
+.card-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:1.25rem;}
+label{display:block;font-size:12px;font-weight:600;color:var(--ink);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;}
+input[type="text"],textarea,select{width:100%;font-family:var(--font);font-size:15px;color:var(--ink);background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.75rem 1rem;outline:none;transition:border-color .15s;-webkit-appearance:none;}
+input[type="text"]:focus,textarea:focus,select:focus{border-color:var(--ink);background:var(--white);}
+textarea{resize:vertical;min-height:140px;line-height:1.6;}
+.form-group{margin-bottom:1rem;}
+.btn{width:100%;padding:.9rem 1rem;font-family:var(--font);font-size:15px;font-weight:600;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:opacity .15s,transform .1s;letter-spacing:-.01em;}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--ink);color:var(--white);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-outline{background:transparent;color:var(--ink);border:1.5px solid var(--border);}
+.btn+.btn{margin-top:.5rem;}
+.day-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.75rem;}
+.day-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1.25rem;}
+.day-btn{aspect-ratio:1;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--mono);font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.day-btn small{font-size:9px;letter-spacing:.05em;text-transform:uppercase;}
+.day-btn.available{background:var(--white);color:var(--ink);border-color:var(--border);}
+.day-btn.available:hover,.day-btn.available:active{border-color:var(--ink);}
+.day-btn.submitted{background:var(--green-light);border-color:#2D6A4F44;color:var(--green);}
+.day-btn.locked{opacity:.35;cursor:not-allowed;}
+.question-box{background:var(--accent-light);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;}
+.question-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.5rem;}
+.question-text{font-size:14px;font-weight:500;color:var(--ink);line-height:1.6;}
+.student-bar{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.student-bar-name{font-size:13px;font-weight:600;color:var(--ink);}
+.student-bar-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.btn-small{font-size:12px;font-weight:600;padding:.35rem .75rem;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font);white-space:nowrap;}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--white);font-size:13px;font-weight:500;padding:.75rem 1.25rem;border-radius:20px;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--red);}
+.spinner{width:18px;height:18px;border:2.5px solid #ffffff44;border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;}
+.badge-green{background:var(--green-light);color:var(--green);}
+.badge-muted{background:var(--accent-light);color:var(--muted);}
+.welcome-icon{width:52px;height:52px;background:var(--accent-light);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:24px;}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <div class="site-name">You Lead Elite Group<span>Tech Empowerment Program</span></div>
+    <span class="header-badge">Student Portal</span>
+  </div>
+</header>
+<main class="main">
+  <div class="screen active" id="screen-login">
+    <div class="card">
+      <div class="welcome-icon">📚</div>
+      <div class="card-title">Welcome</div>
+      <div class="card-sub">Enter your full name to continue. Use the same name every time you visit.</div>
+      <div class="form-group">
+        <label for="loginName">Your Full Name</label>
+        <input type="text" id="loginName" placeholder="e.g. Temilade Adeyemi" autocomplete="name" autocapitalize="words" />
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Continue →</button>
+    </div>
+    <p style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">First time? Your name will be registered automatically.<br>Returning? Just enter the same name.</p>
+  </div>
+  <div class="screen" id="screen-dashboard">
+    <div class="student-bar">
+      <div>
+        <div class="student-bar-name" id="dashName">—</div>
+        <div class="student-bar-sub">Tap a day to submit your assignment</div>
+      </div>
+      <button class="btn-small" onclick="switchStudent()">Not me?</button>
+    </div>
+    <div class="card">
+      <div class="day-label">Select a Day</div>
+      <div class="day-grid" id="dayGrid"></div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.5;"><span class="badge badge-green">✓ Done</span> = submitted &nbsp;<span class="badge badge-muted">Locked</span> = not yet open</p>
+    </div>
+  </div>
+  <div class="screen" id="screen-submit">
+    <div class="student-bar">
+      <div>
+        <div class="student-bar-name" id="submitName">—</div>
+        <div class="student-bar-sub" id="submitDayLabel">Day —</div>
+      </div>
+      <button class="btn-small" onclick="showDashboard()">← Back</button>
+    </div>
+    <div class="card">
+      <div class="question-label">Today's Question</div>
+      <div class="question-text" id="questionText">Loading...</div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="font-size:15px;margin-bottom:.75rem;">Your Answer</div>
+      <div class="form-group">
+        <textarea id="answerText" placeholder="Type your answer here. Be as detailed as you can..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="submitBtn" onclick="handleSubmit()">Submit Answer</button>
+      <button class="btn btn-outline" onclick="showDashboard()">Cancel</button>
+    </div>
+  </div>
+  <div class="screen" id="screen-already">
+    <div class="student-bar">
+      <div>
+        <div class="student-bar-name" id="alreadyName">—</div>
+        <div class="student-bar-sub" id="alreadyDayLabel">Day —</div>
+      </div>
+      <button class="btn-small" onclick="showDashboard()">← Back</button>
+    </div>
+    <div class="card" style="text-align:center;padding:2rem 1.5rem;">
+      <div style="font-size:36px;margin-bottom:1rem;">✅</div>
+      <div class="card-title" style="font-size:16px;">Already Submitted</div>
+      <div class="card-sub" style="margin-bottom:1.25rem;">You have already submitted your answer for this day.</div>
+      <div class="question-box" style="text-align:left;margin-bottom:0;">
+        <div class="question-label">Your submitted answer</div>
+        <div class="question-text" id="alreadyAnswer" style="font-weight:400;font-size:13px;"></div>
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="showDashboard()">← Back to Days</button>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const SUPABASE_URL = 'https://tjmlkrwdghifqtkjnwyj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqbWxrcndkZ2hpZnF0a2pud3lqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjUxMTUsImV4cCI6MjA5MDgwMTExNX0.gCdH6XQmq3R0IDfen2ozl8ZNBq1-8BBE6XA0CjrSj70';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentStudent = null;
+let currentDay = null;
+let daysConfig = [];
+let mySubmissions = [];
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('elite_student');
+  if (saved) { currentStudent = JSON.parse(saved); loadDashboard(); }
+});
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('screen-'+id).classList.add('active'); window.scrollTo(0,0); }
+function switchStudent() { localStorage.removeItem('elite_student'); currentStudent=null; mySubmissions=[]; showScreen('login'); }
+async function handleLogin() {
+  const rawName = document.getElementById('loginName').value.trim();
+  if (!rawName||rawName.length<2) { toast('Please enter your full name','error'); return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Checking...';
+  try {
+    let { data: existing } = await db.from('students').select('*').ilike('name', rawName).single();
+    if (existing) { currentStudent={id:existing.id,name:existing.name}; }
+    else {
+      const { data: newStudent, error } = await db.from('students').insert({name:rawName}).select().single();
+      if (error) throw error;
+      currentStudent={id:newStudent.id,name:newStudent.name};
+      toast('Welcome! You\'re registered.','success');
+    }
+    localStorage.setItem('elite_student', JSON.stringify(currentStudent));
+    await loadDashboard();
+  } catch(e) { console.error(e); toast('Something went wrong. Try again.','error'); btn.disabled=false; btn.textContent='Continue →'; }
+}
+async function loadDashboard() {
+  showScreen('dashboard');
+  document.getElementById('dashName').textContent = currentStudent.name;
+  const [daysRes, subsRes] = await Promise.all([
+    db.from('days').select('*').order('day_number'),
+    db.from('submissions').select('day_number').eq('student_id', currentStudent.id)
+  ]);
+  daysConfig = daysRes.data||[];
+  mySubmissions = (subsRes.data||[]).map(s=>s.day_number);
+  renderDayGrid();
+}
+function showDashboard() { loadDashboard(); }
+function renderDayGrid() {
+  const grid = document.getElementById('dayGrid');
+  const openDays = daysConfig.map(d=>d.day_number);
+  let html='';
+  for (let i=1;i<=8;i++) {
+    const isOpen=openDays.includes(i), isDone=mySubmissions.includes(i);
+    let cls=isDone?'submitted':isOpen?'available':'locked';
+    let icon=isDone?'✓':'';
+    let click=(isOpen||isDone)?`onclick="selectDay(${i})"`:'';
+    html+=`<button class="day-btn ${cls}" ${click}><span>${icon||'D'+i}</span><small>Day ${i}</small></button>`;
+  }
+  grid.innerHTML=html;
+}
+async function selectDay(dayNum) {
+  currentDay=dayNum;
+  if (mySubmissions.includes(dayNum)) {
+    const { data: sub } = await db.from('submissions').select('answer').eq('student_id',currentStudent.id).eq('day_number',dayNum).single();
+    document.getElementById('alreadyName').textContent=currentStudent.name;
+    document.getElementById('alreadyDayLabel').textContent='Day '+dayNum;
+    document.getElementById('alreadyAnswer').textContent=sub?.answer||'';
+    showScreen('already'); return;
+  }
+  const dayConfig=daysConfig.find(d=>d.day_number===dayNum);
+  const question=dayConfig?.question||'No question set yet. Check back later.';
+  document.getElementById('submitName').textContent=currentStudent.name;
+  document.getElementById('submitDayLabel').textContent='Day '+dayNum+' Assignment';
+  document.getElementById('questionText').textContent=question;
+  document.getElementById('answerText').value='';
+  showScreen('submit');
+}
+function cleanAnswer(raw) {
+  return raw
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/ /g, ' ')
+    .replace(/
+/g, '
+')
+    .replace(/
+/g, '
+')
+    .replace(/
+{3,}/g, '
+
+')
+    .split('
+').map(l => l.replace(/[ 	]+$/, '').replace(/^[ 	]+/, '')).join('
+')
+    .replace(/[ 	]{2,}/g, ' ')
+    .trim();
+}
+async function handleSubmit() {
+  const raw = document.getElementById('answerText').value;
+  const answer = cleanAnswer(raw);
+  document.getElementById('answerText').value = answer;
+  if (!answer||answer.length<5) { toast('Please write your answer first','error'); return; }
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Submitting...';
+  try {
+    const { error }=await db.from('submissions').insert({student_id:currentStudent.id,student_name:currentStudent.name,day_number:currentDay,answer});
+    if (error) throw error;
+    mySubmissions.push(currentDay);
+    toast('Submitted! Well done.','success');
+    setTimeout(()=>showDashboard(),1200);
+  } catch(e) {
+    if (e.code==='23505') { toast('Already submitted!','error'); mySubmissions.push(currentDay); showDashboard(); }
+    else { toast('Failed. Try again.','error'); btn.disabled=false; btn.textContent='Submit Answer'; }
+  }
+}
+function toast(msg,type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show '+type;
+  setTimeout(()=>{el.className='toast';},3000);
+}
+</script>
+</body>
+</html>
