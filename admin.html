@@ -46,7 +46,7 @@ textarea{resize:vertical;min-height:100px;line-height:1.6;}
 .sub-body{padding:1rem;display:none;}
 .sub-body.open{display:block;}
 .sub-q{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.4rem;}
-.sub-answer{font-size:13px;color:var(--ink);line-height:1.8;background:var(--bg);padding:.75rem 1rem;border-radius:6px;word-break:break-word;}
+.sub-answer{font-size:13px;color:var(--ink);line-height:1.7;background:var(--bg);padding:.75rem;border-radius:6px;word-break:break-word;}
 .day-manage-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:.75rem;}
 .day-manage-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;}
 .day-manage-title{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink);}
@@ -145,24 +145,30 @@ function applyFilters() {
   if(name) f=f.filter(s=>s.student_name.toLowerCase().includes(name));
   renderSubmissions(f);
 }
-function escapeHtml(str){return(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function formatAnswer(str){return escapeHtml(str).replace(/\n\n/g,'</p><p style="margin-top:.6em;">').replace(/\n/g,'<br>');}
+function escapeHtml(str){
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatAnswer(str){
+  var s = escapeHtml(str);
+  s = s.replace(/\n\n/g,'</p><p style="margin-top:.5em;">');
+  s = s.replace(/\n/g,'<br>');
+  return s;
+}
 function renderSubmissions(subs) {
   const el=document.getElementById('subsList');
   if(!subs.length){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:14px;">No submissions found.</div>';return;}
   el.innerHTML=subs.map((s,i)=>{
     const date=new Date(s.submitted_at).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'});
     const dayConfig=allDays.find(d=>d.day_number===s.day_number);
-    const question=escapeHtml(dayConfig?.question||'—');
-    const answer=formatAnswer(s.answer);
+    const question=dayConfig?.question||'—';
     return `<div class="sub-card">
       <div class="sub-card-header" onclick="toggleSub(${i})">
-        <div class="sub-header-left"><div class="sub-student">${escapeHtml(s.student_name)}</div><div class="sub-meta">Day ${s.day_number} &bull; ${date}</div></div>
+        <div class="sub-header-left"><div class="sub-student">${s.student_name}</div><div class="sub-meta">Day ${s.day_number} &bull; ${date}</div></div>
         <span style="color:var(--muted);font-size:18px;" id="chevron-${i}">›</span>
       </div>
       <div class="sub-body" id="sub-body-${i}">
         <div class="sub-q">Question</div><div class="sub-answer" style="margin-bottom:.75rem;">${question}</div>
-        <div class="sub-q">Student's Answer</div><div class="sub-answer"><p>${answer}</p></div>
+        <div class="sub-q">Student's Answer</div><div class="sub-answer">${s.answer}</div>
       </div></div>`;
   }).join('');
 }
