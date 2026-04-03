@@ -211,26 +211,18 @@ async function selectDay(dayNum) {
   showScreen('submit');
 }
 function cleanAnswer(raw) {
-  return raw
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, '-')
-    .replace(/ /g, ' ')
-    .replace(/
-/g, '
-')
-    .replace(/
-/g, '
-')
-    .replace(/
-{3,}/g, '
-
-')
-    .split('
-').map(l => l.replace(/[ 	]+$/, '').replace(/^[ 	]+/, '')).join('
-')
-    .replace(/[ 	]{2,}/g, ' ')
-    .trim();
+  var s = raw;
+  s = s.replace(/[\u2018\u2019]/g, "'");
+  s = s.replace(/[\u201C\u201D]/g, '"');
+  s = s.replace(/[\u2013\u2014]/g, '-');
+  s = s.replace(/\u00A0/g, ' ');
+  s = s.replace(/\r\n/g, '\n');
+  s = s.replace(/\r/g, '\n');
+  s = s.replace(/\n{3,}/g, '\n\n');
+  s = s.split('\n').map(function(l){ return l.trimEnd(); }).join('\n');
+  s = s.replace(/  +/g, ' ');
+  s = s.trim();
+  return s;
 }
 async function handleSubmit() {
   const raw = document.getElementById('answerText').value;
