@@ -145,11 +145,13 @@ function applyFilters() {
   if(name) f=f.filter(s=>s.student_name.toLowerCase().includes(name));
   renderSubmissions(f);
 }
-function escapeHtml(str){
+function esc(str) {
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function formatAnswer(str){
-  var s = escapeHtml(str);
+function fmtAnswer(str) {
+  // always escape first so HTML tags from students render as plain text
+  var s = esc(str);
+  // then convert newlines to visible line breaks
   s = s.replace(/\n\n/g,'</p><p style="margin-top:.5em;">');
   s = s.replace(/\n/g,'<br>');
   return s;
@@ -160,15 +162,16 @@ function renderSubmissions(subs) {
   el.innerHTML=subs.map((s,i)=>{
     const date=new Date(s.submitted_at).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'});
     const dayConfig=allDays.find(d=>d.day_number===s.day_number);
-    const question=dayConfig?.question||'—';
+    const question=esc(dayConfig?.question||'—');
+    const answer=fmtAnswer(s.answer);
     return `<div class="sub-card">
       <div class="sub-card-header" onclick="toggleSub(${i})">
-        <div class="sub-header-left"><div class="sub-student">${s.student_name}</div><div class="sub-meta">Day ${s.day_number} &bull; ${date}</div></div>
+        <div class="sub-header-left"><div class="sub-student">${esc(s.student_name)}</div><div class="sub-meta">Day ${s.day_number} &bull; ${date}</div></div>
         <span style="color:var(--muted);font-size:18px;" id="chevron-${i}">›</span>
       </div>
       <div class="sub-body" id="sub-body-${i}">
         <div class="sub-q">Question</div><div class="sub-answer" style="margin-bottom:.75rem;">${question}</div>
-        <div class="sub-q">Student's Answer</div><div class="sub-answer">${s.answer}</div>
+        <div class="sub-q">Student's Answer</div><div class="sub-answer"><p>${answer}</p></div>
       </div></div>`;
   }).join('');
 }
