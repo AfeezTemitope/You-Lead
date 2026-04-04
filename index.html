@@ -56,6 +56,11 @@ textarea{resize:vertical;min-height:140px;line-height:1.6;}
 .badge-green{background:var(--green-light);color:var(--green);}
 .badge-muted{background:var(--accent-light);color:var(--muted);}
 .welcome-icon{width:52px;height:52px;background:var(--accent-light);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:24px;}
+.file-drop{border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:1.25rem 1rem;text-align:center;cursor:pointer;background:var(--bg);transition:border-color .15s;}
+.file-drop:hover,.file-drop:active{border-color:var(--ink);}
+.file-drop-icon{font-size:22px;margin-bottom:.35rem;}
+.file-drop-text{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px;}
+.file-drop-sub{font-size:11px;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -70,14 +75,14 @@ textarea{resize:vertical;min-height:140px;line-height:1.6;}
     <div class="card">
       <div class="welcome-icon">📚</div>
       <div class="card-title">Welcome</div>
-      <div class="card-sub">Enter your first, middle and last name exactly as given to your teacher.</div>
+      <div class="card-sub">Enter your full name to continue. Use the same name every time you visit.</div>
       <div class="form-group">
         <label for="loginName">Your Full Name</label>
-        <input type="text" id="loginName" placeholder="e.g. Temilade Bello Adeyemi" autocomplete="name" autocapitalize="words" />
+        <input type="text" id="loginName" placeholder="e.g. Temilade Adeyemi" autocomplete="name" autocapitalize="words" />
       </div>
       <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Continue →</button>
     </div>
-    <p style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6;"><strong>Use all 3 names</strong> — e.g. <em>Temilade Bello Adeyemi</em><br>Always spell it the same way every visit.</p>
+    <p style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">First time? Your name will be registered automatically.<br>Returning? Just enter the same name.</p>
   </div>
   <div class="screen" id="screen-dashboard">
     <div class="student-bar">
@@ -110,6 +115,19 @@ textarea{resize:vertical;min-height:140px;line-height:1.6;}
       <div class="form-group">
         <textarea id="answerText" placeholder="Type your answer here. Be as detailed as you can..."></textarea>
       </div>
+      <div class="form-group">
+        <label for="screenshotInput">Screenshot (optional)</label>
+        <div class="file-drop" id="fileDrop" onclick="document.getElementById('screenshotInput').click()">
+          <div class="file-drop-icon">📎</div>
+          <div class="file-drop-text">Tap to attach a screenshot</div>
+          <div class="file-drop-sub">JPG, PNG or WEBP — max 5MB</div>
+          <input type="file" id="screenshotInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleFileSelect(this)">
+        </div>
+        <div id="imgPreview" style="display:none;margin-top:.75rem;">
+          <img id="previewImg" style="width:100%;border-radius:8px;border:1px solid var(--border);max-height:200px;object-fit:cover;" />
+          <button class="btn-small" style="margin-top:.4rem;color:var(--red);border-color:var(--red);" onclick="clearFile()">Remove image</button>
+        </div>
+      </div>
       <button class="btn btn-primary" id="submitBtn" onclick="handleSubmit()">Submit Answer</button>
       <button class="btn btn-outline" onclick="showDashboard()">Cancel</button>
     </div>
@@ -125,7 +143,7 @@ textarea{resize:vertical;min-height:140px;line-height:1.6;}
     <div class="card" style="text-align:center;padding:2rem 1.5rem;">
       <div style="font-size:36px;margin-bottom:1rem;">✅</div>
       <div class="card-title" style="font-size:16px;">Already Submitted</div>
-      <div class="card-sub" style="margin-bottom:1.25rem;">You have already submitted your answer for this day. If this is not you, tap “Not me?” on the dashboard.</div>
+      <div class="card-sub" style="margin-bottom:1.25rem;">You have already submitted your answer for this day.</div>
       <div class="question-box" style="text-align:left;margin-bottom:0;">
         <div class="question-label">Your submitted answer</div>
         <div class="question-text" id="alreadyAnswer" style="font-weight:400;font-size:13px;"></div>
@@ -140,156 +158,138 @@ const SUPABASE_URL = 'https://tjmlkrwdghifqtkjnwyj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqbWxrcndkZ2hpZnF0a2pud3lqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjUxMTUsImV4cCI6MjA5MDgwMTExNX0.gCdH6XQmq3R0IDfen2ozl8ZNBq1-8BBE6XA0CjrSj70';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let currentStudent = null, currentDay = null, daysConfig = [], mySubmissions = [];
-
-function normalizeName(raw) {
-  return raw.trim().replace(/\s+/g,' ').replace(/\w\S*/g,function(w){return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();});
-}
-function validateName(name) {
-  var parts = name.trim().split(/\s+/);
-  if (parts.length < 3) return 'Please enter your first, middle and last name (3 names required).';
-  if (name.length < 6) return 'Name is too short.';
-  return null;
-}
-function cleanAnswer(raw) {
-  var s = raw;
-  s = s.replace(/[\u2018\u2019]/g,"'");
-  s = s.replace(/[\u201C\u201D]/g,'"');
-  s = s.replace(/[\u2013\u2014]/g,'-');
-  s = s.replace(/\u00A0/g,' ');
-  s = s.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  s = s.replace(/\n{3,}/g,'\n\n');
-  s = s.split('\n').map(function(l){return l.trimEnd();}).join('\n');
-  s = s.replace(/ {2,}/g,' ');
-  return s.trim();
-}
-
-window.addEventListener('DOMContentLoaded', function() {
-  var saved = localStorage.getItem('elite_student');
-  if (saved) {
-    try {
-      currentStudent = JSON.parse(saved);
-      if (!currentStudent.id || !currentStudent.name) throw new Error('bad');
-      loadDashboard();
-    } catch(e) { localStorage.removeItem('elite_student'); currentStudent=null; showScreen('login'); }
-  }
+let currentStudent = null;
+let currentDay = null;
+let daysConfig = [];
+let mySubmissions = [];
+let selectedFile = null;
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('elite_student');
+  if (saved) { currentStudent = JSON.parse(saved); loadDashboard(); }
 });
-
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
-  document.getElementById('screen-'+id).classList.add('active');
-  window.scrollTo(0,0);
-}
-function switchStudent() {
-  localStorage.removeItem('elite_student');
-  currentStudent=null; mySubmissions=[]; daysConfig=[];
-  document.getElementById('loginName').value='';
-  showScreen('login');
-}
-
+function showScreen(id) { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById('screen-'+id).classList.add('active'); window.scrollTo(0,0); }
+function switchStudent() { localStorage.removeItem('elite_student'); currentStudent=null; mySubmissions=[]; showScreen('login'); }
 async function handleLogin() {
-  var rawName = document.getElementById('loginName').value;
-  var name = normalizeName(rawName);
-  var nameErr = validateName(name);
-  if (nameErr) { toast(nameErr,'error'); return; }
-  var btn = document.getElementById('loginBtn');
+  const rawName = document.getElementById('loginName').value.trim();
+  if (!rawName||rawName.length<2) { toast('Please enter your full name','error'); return; }
+  const btn = document.getElementById('loginBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Checking...';
   try {
-    var res = await db.from('students').select('*').ilike('name',name).maybeSingle();
-    if (res.data) {
-      currentStudent = {id:res.data.id, name:res.data.name};
-      toast('Welcome back, '+res.data.name.split(' ')[0]+'!','success');
-    } else {
-      var ins = await db.from('students').insert({name:name}).select().single();
-      if (ins.error) {
-        if (ins.error.code==='23505') { toast('This name is already registered. Check your spelling.','error'); btn.disabled=false; btn.textContent='Continue →'; return; }
-        throw ins.error;
-      }
-      currentStudent = {id:ins.data.id, name:ins.data.name};
-      toast('Registered! Welcome, '+ins.data.name.split(' ')[0]+'.','success');
+    let { data: existing } = await db.from('students').select('*').ilike('name', rawName).single();
+    if (existing) { currentStudent={id:existing.id,name:existing.name}; }
+    else {
+      const { data: newStudent, error } = await db.from('students').insert({name:rawName}).select().single();
+      if (error) throw error;
+      currentStudent={id:newStudent.id,name:newStudent.name};
+      toast('Welcome! You\'re registered.','success');
     }
     localStorage.setItem('elite_student', JSON.stringify(currentStudent));
     await loadDashboard();
-  } catch(e) {
-    console.error(e);
-    toast('Something went wrong. Try again.','error');
-    btn.disabled=false; btn.textContent='Continue →';
-  }
+  } catch(e) { console.error(e); toast('Something went wrong. Try again.','error'); btn.disabled=false; btn.textContent='Continue →'; }
 }
-
 async function loadDashboard() {
   showScreen('dashboard');
   document.getElementById('dashName').textContent = currentStudent.name;
-  try {
-    var results = await Promise.all([
-      db.from('days').select('*').order('day_number'),
-      db.from('submissions').select('day_number').eq('student_id',currentStudent.id)
-    ]);
-    daysConfig = results[0].data||[];
-    mySubmissions = (results[1].data||[]).map(function(s){return s.day_number;});
-  } catch(e) { console.error(e); toast('Could not load. Check your connection.','error'); }
+  const [daysRes, subsRes] = await Promise.all([
+    db.from('days').select('*').order('day_number'),
+    db.from('submissions').select('day_number').eq('student_id', currentStudent.id)
+  ]);
+  daysConfig = daysRes.data||[];
+  mySubmissions = (subsRes.data||[]).map(s=>s.day_number);
   renderDayGrid();
 }
 function showDashboard() { loadDashboard(); }
-
 function renderDayGrid() {
-  var grid = document.getElementById('dayGrid');
-  var openDays = daysConfig.map(function(d){return d.day_number;});
-  var html='';
-  for (var i=1;i<=8;i++) {
-    var isOpen=openDays.indexOf(i)>-1, isDone=mySubmissions.indexOf(i)>-1;
-    var cls=isDone?'submitted':isOpen?'available':'locked';
-    var icon=isDone?'\u2713':'';
-    var click=(isOpen||isDone)?'onclick="selectDay('+i+')"':'';
-    html+='<button class="day-btn '+cls+'" '+click+'><span>'+(icon||'D'+i)+'</span><small>Day '+i+'</small></button>';
+  const grid = document.getElementById('dayGrid');
+  const openDays = daysConfig.map(d=>d.day_number);
+  let html='';
+  for (let i=1;i<=8;i++) {
+    const isOpen=openDays.includes(i), isDone=mySubmissions.includes(i);
+    let cls=isDone?'submitted':isOpen?'available':'locked';
+    let icon=isDone?'✓':'';
+    let click=(isOpen||isDone)?`onclick="selectDay(${i})"`:'';
+    html+=`<button class="day-btn ${cls}" ${click}><span>${icon||'D'+i}</span><small>Day ${i}</small></button>`;
   }
   grid.innerHTML=html;
 }
-
 async function selectDay(dayNum) {
   currentDay=dayNum;
-  if (mySubmissions.indexOf(dayNum)>-1) {
-    try {
-      var res = await db.from('submissions').select('answer').eq('student_id',currentStudent.id).eq('day_number',dayNum).single();
-      document.getElementById('alreadyName').textContent=currentStudent.name;
-      document.getElementById('alreadyDayLabel').textContent='Day '+dayNum;
-      document.getElementById('alreadyAnswer').textContent=res.data?res.data.answer:'';
-    } catch(e) { document.getElementById('alreadyAnswer').textContent='Could not load. Check connection.'; }
+  if (mySubmissions.includes(dayNum)) {
+    const { data: sub } = await db.from('submissions').select('answer').eq('student_id',currentStudent.id).eq('day_number',dayNum).single();
+    document.getElementById('alreadyName').textContent=currentStudent.name;
+    document.getElementById('alreadyDayLabel').textContent='Day '+dayNum;
+    document.getElementById('alreadyAnswer').textContent=sub?.answer||'';
     showScreen('already'); return;
   }
-  var dayConfig=daysConfig.filter(function(d){return d.day_number===dayNum;})[0];
-  var question=(dayConfig&&dayConfig.question)?dayConfig.question:'No question set yet. Check back later.';
+  const dayConfig=daysConfig.find(d=>d.day_number===dayNum);
+  const question=dayConfig?.question||'No question set yet. Check back later.';
   document.getElementById('submitName').textContent=currentStudent.name;
   document.getElementById('submitDayLabel').textContent='Day '+dayNum+' Assignment';
   document.getElementById('questionText').textContent=question;
   document.getElementById('answerText').value='';
+  clearFile();
   showScreen('submit');
 }
-
+function handleFileSelect(input) {
+  var file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('Image too large. Max 5MB.','error'); input.value=''; return; }
+  selectedFile = file;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('imgPreview').style.display = 'block';
+    document.getElementById('fileDrop').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+function clearFile() {
+  selectedFile = null;
+  var inp = document.getElementById('screenshotInput');
+  if (inp) inp.value = '';
+  var prev = document.getElementById('imgPreview');
+  var drop = document.getElementById('fileDrop');
+  if (prev) prev.style.display = 'none';
+  if (drop) drop.style.display = 'block';
+}
+async function uploadScreenshot() {
+  if (!selectedFile) return null;
+  var ext = selectedFile.name.split('.').pop().toLowerCase();
+  var fileName = currentStudent.id + '_day' + currentDay + '_' + Date.now() + '.' + ext;
+  var res = await db.storage.from('submissions').upload(fileName, selectedFile, {upsert:true, contentType:selectedFile.type});
+  if (res.error) throw res.error;
+  var pub = db.storage.from('submissions').getPublicUrl(fileName);
+  return pub.data.publicUrl;
+}
 async function handleSubmit() {
-  var raw = document.getElementById('answerText').value;
-  var answer = cleanAnswer(raw);
-  document.getElementById('answerText').value=answer;
-  if (!answer||answer.length<20) { toast('Your answer is too short. Please elaborate.','error'); return; }
+  const raw = document.getElementById('answerText').value;
+  const answer = raw.trim();
+  if (!answer||answer.length<5) { toast('Please write your answer first','error'); return; }
   if (mySubmissions.indexOf(currentDay)>-1) { toast('Already submitted for this day.','error'); showDashboard(); return; }
-  var btn=document.getElementById('submitBtn');
+  const btn=document.getElementById('submitBtn');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Submitting...';
   try {
-    var res = await db.from('submissions').insert({student_id:currentStudent.id,student_name:currentStudent.name,day_number:currentDay,answer:answer});
-    if (res.error) throw res.error;
+    var screenshotUrl = null;
+    if (selectedFile) {
+      btn.innerHTML='<span class="spinner"></span>Uploading image...';
+      screenshotUrl = await uploadScreenshot();
+    }
+    btn.innerHTML='<span class="spinner"></span>Saving...';
+    const { error }=await db.from('submissions').insert({student_id:currentStudent.id,student_name:currentStudent.name,day_number:currentDay,answer:answer,screenshot_url:screenshotUrl});
+    if (error) throw error;
     mySubmissions.push(currentDay);
-    toast('Submitted! Well done, '+currentStudent.name.split(' ')[0]+'.','success');
-    setTimeout(function(){showDashboard();},1400);
+    selectedFile = null;
+    toast('Submitted! Well done.','success');
+    setTimeout(()=>showDashboard(),1200);
   } catch(e) {
-    if (e.code==='23505') { toast('Already submitted for this day!','error'); mySubmissions.push(currentDay); showDashboard(); }
-    else { console.error(e); toast('Submission failed. Check connection and try again.','error'); btn.disabled=false; btn.textContent='Submit Answer'; }
+    if (e.code==='23505') { toast('Already submitted!','error'); mySubmissions.push(currentDay); showDashboard(); }
+    else { console.error(e); toast('Failed. Try again.','error'); btn.disabled=false; btn.textContent='Submit Answer'; }
   }
 }
-
-function toast(msg,type) {
-  var el=document.getElementById('toast');
-  el.textContent=msg; el.className='toast show'+(type?' '+type:'');
-  setTimeout(function(){el.className='toast';},3500);
+function toast(msg,type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show '+type;
+  setTimeout(()=>{el.className='toast';},3000);
 }
 </script>
 </body>
