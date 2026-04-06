@@ -60,11 +60,21 @@ textarea{resize:vertical;min-height:100px;line-height:1.6;}
 @keyframes spin{to{transform:rotate(360deg);}}
 @media print{.site-header,.tabs,.filter-row,.btn,.btn-small,#printBtn,#downloadBtn{display:none!important;}.sub-body{display:block!important;}.sub-card{break-inside:avoid;border:1px solid #ccc;}body{background:white;}}
 @media(max-width:480px){.stats-row{grid-template-columns:repeat(3,1fr);gap:6px;}.stat-num{font-size:18px;}.filter-row{flex-direction:column;}.filter-row select,.filter-row input{width:100%;}}
-.day-group{margin-bottom:1.5rem;}
-.day-group-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;padding:.6rem .75rem;background:var(--ink);border-radius:var(--radius-sm);}
-.day-group-title{font-family:var(--mono);font-size:13px;font-weight:500;color:#fff;letter-spacing:.04em;}
-.day-group-meta{font-size:11px;color:#aaa;font-family:var(--mono);}
-.day-group-question{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:.6rem;padding:.6rem .75rem;background:var(--accent-light);border-radius:6px;border-left:3px solid var(--border);}
+.folder{margin-bottom:.75rem;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);}
+.folder-tab{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.1rem;background:var(--white);cursor:pointer;transition:background .15s;user-select:none;-webkit-tap-highlight-color:transparent;}
+.folder-tab:hover{background:var(--accent-light);}
+.folder-tab:active{background:var(--accent-light);}
+.folder-tab-left{display:flex;align-items:center;gap:.75rem;}
+.folder-icon{font-size:22px;flex-shrink:0;}
+.folder-name{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink);}
+.folder-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.folder-arrow{font-size:18px;color:var(--muted);transition:transform .2s;}
+.folder-body{border-top:1px solid var(--border);background:var(--bg);padding:.75rem;}
+.folder-question{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-sm);padding:.75rem 1rem;margin-bottom:.75rem;display:flex;flex-direction:column;gap:.3rem;}
+.folder-q-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+.folder-q-text{font-size:13px;color:var(--ink);line-height:1.6;}
+.sub-chevron{color:var(--muted);font-size:18px;flex-shrink:0;}
+.img-action-btn{font-size:12px;font-weight:600;color:var(--ink);text-decoration:none;padding:.3rem .75rem;border:1.5px solid var(--border);border-radius:6px;background:var(--white);}
 </style>
 </head>
 <body>
@@ -152,11 +162,23 @@ function applyFilters() {
 }
 function esc(str){return(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function fmtAnswer(str){var s=esc(str);s=s.replace(/\n\n/g,'</p><p style="margin-top:.5em;">');s=s.replace(/\n/g,'<br>');return s;}
-function renderSubmissions(subs) {
-  const el=document.getElementById('subsList');
-  if(!subs.length){el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:14px;">No submissions found.</div>';return;}
 
-  // group by day number
+function toggleFolder(dayNum) {
+  var body = document.getElementById('folder-body-' + dayNum);
+  var icon = document.getElementById('folder-icon-' + dayNum);
+  var isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  icon.textContent = isOpen ? '📁' : '📂';
+}
+
+function renderSubmissions(subs) {
+  const el = document.getElementById('subsList');
+  if (!subs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);font-size:14px;">No submissions found.</div>';
+    return;
+  }
+
+  // group by day
   const groups = {};
   subs.forEach(s => {
     const d = s.day_number;
@@ -165,50 +187,47 @@ function renderSubmissions(subs) {
   });
   const sortedDays = Object.keys(groups).map(Number).sort((a,b)=>a-b);
 
-  // global index for unique IDs across all groups
-  let idx = 0;
+  let cardIdx = 0;
   let html = '';
 
   sortedDays.forEach(dayNum => {
     const daySubs = groups[dayNum];
-    const dayConfig = allDays.find(d=>d.day_number===dayNum);
-    const question = esc(dayConfig?.question||'—');
+    const dayConfig = allDays.find(d => d.day_number === dayNum);
+    const question = esc(dayConfig?.question || '—');
     const count = daySubs.length;
 
-    html += `<div class="day-group">
-      <div class="day-group-header">
-        <div class="day-group-title">Day ${dayNum}</div>
-        <div class="day-group-meta">${count} submission${count!==1?'s':''}</div>
-      </div>
-      <div class="day-group-question">${question}</div>`;
+    // build inner cards first
+    let innerHtml = '';
+    innerHtml += `<div class="folder-question">
+      <span class="folder-q-label">Question</span>
+      <span class="folder-q-text">${question}</span>
+    </div>`;
 
     daySubs.forEach(s => {
-      const i = idx++;
-      const date=new Date(s.submitted_at).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'});
-      const answer=fmtAnswer(s.answer);
+      const i = cardIdx++;
+      const date = new Date(s.submitted_at).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'});
+      const answer = fmtAnswer(s.answer);
       const imgHtml = s.screenshot_url
         ? `<div style="margin-top:.75rem;">
             <div class="sub-q" style="margin-bottom:.4rem;">Screenshot</div>
             <a href="${s.screenshot_url}" target="_blank" rel="noopener">
               <img src="${s.screenshot_url}" alt="screenshot"
-                style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:#f7f6f3;" />
+                style="width:100%;max-height:280px;object-fit:contain;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:#f7f6f3;"/>
             </a>
-            <div style="margin-top:.4rem;display:flex;gap:.5rem;">
-              <a href="${s.screenshot_url}" target="_blank" rel="noopener"
-                style="font-size:12px;font-weight:600;color:var(--ink);text-decoration:none;padding:.3rem .75rem;border:1.5px solid var(--border);border-radius:6px;">View full size ↗</a>
-              <a href="${s.screenshot_url}" download
-                style="font-size:12px;font-weight:600;color:var(--ink);text-decoration:none;padding:.3rem .75rem;border:1.5px solid var(--border);border-radius:6px;">Download ⬇</a>
+            <div style="margin-top:.4rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+              <a href="${s.screenshot_url}" target="_blank" rel="noopener" class="img-action-btn">View full ↗</a>
+              <a href="${s.screenshot_url}" download class="img-action-btn">Download ⬇</a>
             </div>
           </div>`
         : '';
 
-      html += `<div class="sub-card">
+      innerHtml += `<div class="sub-card">
         <div class="sub-card-header" onclick="toggleSub(${i})">
           <div class="sub-header-left">
             <div class="sub-student">${esc(s.student_name)}</div>
-            <div class="sub-meta">${date}${s.screenshot_url?' &bull; 📎':''}</div>
+            <div class="sub-meta">${date}${s.screenshot_url ? ' &bull; 📎' : ''}</div>
           </div>
-          <span style="color:var(--muted);font-size:18px;" id="chevron-${i}">›</span>
+          <span class="sub-chevron" id="chevron-${i}">›</span>
         </div>
         <div class="sub-body" id="sub-body-${i}">
           <div class="sub-q">Answer</div>
@@ -218,7 +237,21 @@ function renderSubmissions(subs) {
       </div>`;
     });
 
-    html += '</div>';
+    html += `<div class="folder">
+      <div class="folder-tab" onclick="toggleFolder(${dayNum})">
+        <div class="folder-tab-left">
+          <span class="folder-icon" id="folder-icon-${dayNum}">📁</span>
+          <div>
+            <div class="folder-name">Day ${dayNum}</div>
+            <div class="folder-sub">${count} submission${count !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+        <span class="folder-arrow" id="folder-arrow-${dayNum}">›</span>
+      </div>
+      <div class="folder-body" id="folder-body-${dayNum}" style="display:none;">
+        ${innerHtml}
+      </div>
+    </div>`;
   });
 
   el.innerHTML = html;
